@@ -1,0 +1,146 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'nodejs'
+    }
+
+    environment {
+        APP_DIR = 'hub-de-leitura-integrado2'
+        TEST_DIR = 'hub-de-leitura-ui-cypress-allure'
+
+        APP_REPOSITORY = 'https://github.com/EBAC-QE/hub-de-leitura-integrado2.git'
+        TEST_REPOSITORY = 'https://github.com/richielmartillo/hub-de-leitura-ui-cypress-allure.git'
+    }
+
+    stages {
+        stage('Clonar e iniciar a aplicacao') {
+            steps {
+                bat '''
+                    if exist "%APP_DIR%" rmdir /s /q "%APP_DIR%"
+
+                    git clone --depth 1 "%APP_REPOSITORY%" "%APP_DIR%"
+
+                    cd /d "%APP_DIR%"
+                    call npm ci
+                '''
+
+                powershell '''
+                    $stdout = Join-Path $env:APP_DIR 'app.log'
+                    $stderr = Join-Path $env:APP_DIR 'app-error.log'
+
+                    $process = Start-Process `
+                        -FilePath 'npm.cmd' `
+                        -ArgumentList 'start' `
+                        -WorkingDirectory $env:APP_DIR `
+                        -RedirectStandardOutput $stdout `
+                        -RedirectStandardError $stderr `
+                        -WindowStyle Hidden `
+                        -PassThru
+
+                    $process.Id | Out-File `
+                        -FilePath (Join-Path $env:APP_DIR 'app.pid') `
+                        -Encoding ascii
+
+                    Write-Host "Aplicacao iniciada com PID $($process.Id)"
+                '''
+            }
+        }
+
+        stage('Clonar e instalar o projeto de teste') {
+            steps {
+                bat '''
+                    if exist "%TEST_DIR%" rmdir /s /q "%TEST_DIR%"
+
+                    git clone --depth 1 "%TEST_REPOSITORY%" "%TEST_DIR%"
+
+                    cd /d "%TEST_DIR%"
+                    call npm ci
+                '''
+            }
+        }
+
+        stage('Esperar a aplicacao subir') {
+            steps {
+                dir(env.TEST_DIR) {
+                    bat '''
+                        call npx wait-on http://localhost:3000 --timeout 120000
+                    '''
+                }
+            }
+        }
+
+        stage('Executar testes no Cypress Cloud') {
+            steps {
+                dir(env.TEST_DIR) {
+                    withCredentials([
+                        string(
+                            credentialsId: 'cypress-record-key',
+                            variable: 'CYPRESS_RECORD_KEY'
+                        )
+                    ]) {
+                        bat '''
+                            call npx cypress run ^
+                                --record ^
+                                --key "%CYPRESS_RECORD_KEY%" ^
+                                --browser chrome ^
+                                --ci-build-id "jenkins-%BUILD_NUMBER%" ^
+                                --group "UI-Windows"
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                if (fileExists(env.TEST_DIR)) {
+                    dir(env.TEST_DIR) {
+                        archiveArtifacts(
+                            artifacts: 'cypress/screenshots/**/*.*,cypress/videos/**/*.*,allure-results/**/*.*',
+                            allowEmptyArchive: true
+                        )
+
+                        allure(
+                            includeProperties: false,
+                            jdk: '',
+                            results: [[path: 'allure-results']]
+                        )
+                    }
+                } else {
+                    echo 'Diretorio de testes nao encontrado. Artefatos nao foram publicados.'
+                }
+
+                if (fileExists("${env.APP_DIR}/app.pid")) {
+                    powershell '''
+                        $pidFile = Join-Path $env:APP_DIR 'app.pid'
+                        $appPid = Get-Content $pidFile -ErrorAction SilentlyContinue
+
+                        if ($appPid) {
+                            Write-Host "Encerrando processo da aplicacao: PID $appPid"
+                            taskkill /PID $appPid /T /F 2>$null
+
+                            if ($LASTEXITCODE -ne 0) {
+                                Write-Host 'O processo ja estava encerrado.'
+                            }
+                        }
+
+                        Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
+                    '''
+                } else {
+                    echo 'Arquivo app.pid nao encontrado. Nenhum processo foi encerrado.'
+                }
+            }
+        }
+
+        success {
+            echo 'Pipeline concluido com sucesso.'
+        }
+
+        failure {
+            echo 'Pipeline finalizado com falha. Consulte o Console Output.'
+        }
+    }
+}
