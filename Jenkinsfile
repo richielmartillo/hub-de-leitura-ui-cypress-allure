@@ -9,7 +9,7 @@ pipeline {
         APP_DIR = 'hub-de-leitura-integrado2'
         TEST_DIR = 'hub-de-leitura-teste-ui'
         APP_REPOSITORY = 'https://github.com/EBAC-QE/hub-de-leitura-integrado2.git'
-        TEST_REPOSITORY = 'https://github.com/richielmartillo/hub-de-leitura-teste-ui.git'
+        TEST_REPOSITORY = 'https://github.com/richielmartillo/hub-de-leitura-ui-cypress-allure'
     }
 
     stages {
