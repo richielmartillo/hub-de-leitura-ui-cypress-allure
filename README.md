@@ -24,8 +24,6 @@ Os cenários existentes na suíte abrangem:
 - Busca de livros por texto e por dados carregados de fixture.
 - Envio do formulário de contato e validações de campos obrigatórios.
 
-> Observação: há um `it.only` em `cypress/e2e/catalogo-busca.cy.js`. Enquanto ele permanecer, o Cypress limitará a execução desse spec ao cenário marcado. A remoção deve ser considerada antes de uma execução completa da suíte.
-
 ## Tecnologias utilizadas
 
 - JavaScript
