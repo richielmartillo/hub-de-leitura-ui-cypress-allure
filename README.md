@@ -68,13 +68,13 @@ Antes de executar o projeto, é necessário ter instalado:
 Clone o repositório:
 
 ```bash
-git clone https://github.com/richielmartillo/hub-de-leitura-teste-ui3.git
+git clone https://github.com/richielmartillo/hub-de-leitura-teste-ui.git
 ```
 
 Acesse a pasta do projeto:
 
 ```bash
-cd hub-de-leitura-teste-ui3
+cd hub-de-leitura-teste-ui
 ```
 
 Instale as dependências:
@@ -118,7 +118,7 @@ Durante a pipeline, são realizadas etapas como:
 - clonagem do repositório da aplicação **hub-de-leitura-integrado2**
 - instalação das dependências da aplicação
 - inicialização da aplicação localmente
-- clonagem do repositório de testes **hub-de-leitura-teste-ui3**
+- clonagem do repositório de testes **hub-de-leitura-teste-ui**
 - instalação das dependências do projeto de testes
 - espera da aplicação estar disponível em `http://localhost:3000`
 - execução dos testes no **Cypress Cloud**

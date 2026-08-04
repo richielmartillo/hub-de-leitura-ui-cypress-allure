@@ -4,26 +4,27 @@
   "description": "Este projeto trata-se de um teste de UI para o Hub de Leitura da EBAC.",
   "main": "index.js",
   "scripts": {
-    "test": "npx cypress run --browser chrome",
-    "cy:report": "npx cypress run --browser chrome --record"
+    "test": "cypress run --browser chrome",
+    "cy:report": "cypress run --browser chrome --record"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/EBAC-QE/hub-de-leitura-teste-ui.git"
+    "url": "git+https://github.com/richielmartillo/hub-de-leitura-teste-ui.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/EBAC-QE/hub-de-leitura-teste-ui/issues"
+    "url": "https://github.com/richielmartillo/hub-de-leitura-teste-ui/issues"
   },
-  "homepage": "https://github.com/EBAC-QE/hub-de-leitura-teste-ui#readme",
+  "homepage": "https://github.com/richielmartillo/hub-de-leitura-teste-ui#readme",
   "dependencies": {
     "@faker-js/faker": "^9.9.0",
     "cypress": "^14.5.3"
   },
   "devDependencies": {
-    "allure-cypress": "^3.7.1"
+    "allure-cypress": "^3.7.1",
+    "wait-on": "^8.0.3"
   }
 }

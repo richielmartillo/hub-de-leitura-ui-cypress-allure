@@ -2,67 +2,60 @@ pipeline {
     agent any
 
     tools {
-        nodejs "nodejs"
+        nodejs 'nodejs'
+    }
+
+    environment {
+        APP_DIR = 'hub-de-leitura-integrado2'
+        TEST_DIR = 'hub-de-leitura-teste-ui'
+        APP_REPOSITORY = 'https://github.com/EBAC-QE/hub-de-leitura-integrado2.git'
+        TEST_REPOSITORY = 'https://github.com/richielmartillo/hub-de-leitura-teste-ui.git'
     }
 
     stages {
-
-        stage("Clonar o hub de leitura integrado") {
+        stage('Clonar e iniciar a aplicacao') {
             steps {
-                bat '''
-                    if exist hub-de-leitura-integrado2 rmdir /s /q hub-de-leitura-integrado2
-                    git clone --depth 1 https://github.com/EBAC-QE/hub-de-leitura-integrado2.git
+                sh '''
+                    rm -rf "$APP_DIR"
+                    git clone --depth 1 "$APP_REPOSITORY" "$APP_DIR"
+                    cd "$APP_DIR"
+                    npm ci
+                    nohup npm start > app.log 2>&1 &
+                    echo $! > app.pid
                 '''
             }
         }
 
-        stage("Instalar dependencias e subir aplicacao") {
+        stage('Clonar e instalar o projeto de teste') {
             steps {
-                dir('hub-de-leitura-integrado2') {
-                    bat '''
-                        call npm ci
-                        start /B npm start
-                    '''
-                }
-            }
-        }
-
-        stage("Clonar o projeto de teste") {
-            steps {
-                bat '''
-                    if exist hub-de-leitura-teste-ui3 rmdir /s /q hub-de-leitura-teste-ui3
-                    git clone --depth 1 https://github.com/richielmartillo/hub-de-leitura-teste-ui3.git
+                sh '''
+                    rm -rf "$TEST_DIR"
+                    git clone --depth 1 "$TEST_REPOSITORY" "$TEST_DIR"
+                    cd "$TEST_DIR"
+                    npm ci
                 '''
             }
         }
 
-        stage("Instalar dependencias do projeto de teste") {
+        stage('Esperar a aplicacao subir') {
             steps {
-                dir('hub-de-leitura-teste-ui3') {
-                    bat 'call npm ci'
+                dir(env.TEST_DIR) {
+                    sh 'npx wait-on http://localhost:3000'
                 }
             }
         }
 
-        stage("Esperar a aplicacao subir") {
+        stage('Executar testes no Cypress Cloud') {
             steps {
-                dir('hub-de-leitura-teste-ui3') {
-                    bat 'npx wait-on http://localhost:3000'
-                }
-            }
-        }
-
-        stage("Executar testes no Cypress Cloud") {
-            steps {
-                dir('hub-de-leitura-teste-ui3') {
+                dir(env.TEST_DIR) {
                     withCredentials([string(credentialsId: 'cypress-record-key', variable: 'CYPRESS_RECORD_KEY')]) {
-                        bat '''
-                            npx cypress run ^
-                            --record ^
-                            --key %CYPRESS_RECORD_KEY% ^
-                            --browser chrome ^
-                            --ci-build-id jenkins-%BUILD_NUMBER% ^
-                            --group "UI-Windows"
+                        sh '''
+                            npx cypress run \
+                              --record \
+                              --key "$CYPRESS_RECORD_KEY" \
+                              --browser chrome \
+                              --ci-build-id "jenkins-$BUILD_NUMBER" \
+                              --group 'UI-Linux'
                         '''
                     }
                 }
@@ -72,15 +65,13 @@ pipeline {
 
     post {
         always {
-            dir('hub-de-leitura-teste-ui3') {
+            dir(env.TEST_DIR) {
                 archiveArtifacts artifacts: 'cypress/screenshots/**/*.*,cypress/videos/**/*.*', allowEmptyArchive: true
                 allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
             }
-
-            bat '''
-                taskkill /F /IM node.exe >nul 2>&1
-                exit /b 0
-            '''
+            dir(env.APP_DIR) {
+                sh 'test ! -f app.pid || kill "$(cat app.pid)" || true'
+            }
         }
     }
 }
